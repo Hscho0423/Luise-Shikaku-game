@@ -1,1 +1,0 @@
-# Luise-Shikaku-game
