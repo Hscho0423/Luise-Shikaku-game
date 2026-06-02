@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>루이 땅따먹기 게임</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --line: #d4ddeb;
+      --text: #1f2937;
+      --primary: #2563eb;
+      --hint: #7c3aed;
+      --action-btn-width: 96px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    .app {
+      width: min(760px, 100%);
+      min-height: calc(100dvh - 16px);
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      border: 1px solid #e4eaf4;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    .hidden { display: none !important; }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 1.35rem;
+      text-align: center;
+    }
+
+    #start-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .start-controls {
+      display: grid;
+      gap: 12px;
+      max-width: 340px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    label { font-weight: 700; }
+    select, button {
+      width: 100%;
+      border-radius: 10px;
+      font-size: 1rem;
+      padding: 10px 12px;
+      border: 1px solid #c9d4e8;
+      background: #fff;
+    }
+
+    button {
+      border: none;
+      color: #fff;
+      background: var(--primary);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .time-setting {
+      display: grid;
+      gap: 6px;
+    }
+    .time-setting input[type="range"] { width: 100%; }
+    .time-value {
+      font-weight: 700;
+      text-align: right;
+      font-size: 0.95rem;
+    }
+
+    #start-btn {
+      margin-top: auto;
+    }
+
+    #game-screen {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .game-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .left-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .timer {
+      font-weight: 800;
+      font-size: 0.95rem;
+      min-width: 62px;
+      text-align: left;
+      letter-spacing: 0.02em;
+    }
+
+    .left-group button {
+      width: var(--action-btn-width);
+      min-width: 74px;
+      max-width: 130px;
+      padding: 8px 10px;
+      font-size: 0.9rem;
+    }
+    #hint-btn { background: var(--hint); }
+
+    .home-btn {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      padding: 8px 0;
+      font-size: 1rem;
+      background: #334155;
+      border-radius: 10px;
+    }
+
+    .board-wrap {
+      flex: 1;
+      min-height: 0;
+      border: 1px solid #dce4f2;
+      border-radius: 12px;
+      padding: 4px;
+      background: #fbfdff;
+      touch-action: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .board {
+      --cell-size: 40px;
+      display: grid;
+      touch-action: none;
+      user-select: none;
+      margin: 0 auto;
+    }
+
+    .cell {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      font-weight: 700;
+      font-size: clamp(0.78rem, 2.8vw, 1rem);
+    }
+
+    .cell.preview {
+      outline: 3px solid #9ca3af;
+      outline-offset: -3px;
+      z-index: 2;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 40;
+    }
+    .overlay.show { display: flex; }
+
+    .overlay-box {
+      width: min(420px, 100%);
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+    }
+    .overlay-box p {
+      margin: 0 0 14px;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .orientation-block {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.82);
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      font-weight: 700;
+      z-index: 50;
+    }
+    .orientation-block.show { display: flex; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="start-screen">
+      <h1>루이 땅따먹기 게임</h1>
+      <div class="start-controls">
+        <label for="difficulty">난이도 선택</label>
+        <select id="difficulty">
+          <option value="easy">쉬움 (6x8)</option>
+          <option value="normal">보통 (9x12)</option>
+          <option value="hard">어려움 (11x16)</option>
+        </select>
+
+        <div class="time-setting">
+          <label for="time-limit">제한시간 설정</label>
+          <input id="time-limit" type="range" min="20" max="300" value="120" step="1">
+          <div id="time-value" class="time-value">120초</div>
+        </div>
+      </div>
+      <button id="start-btn" type="button">게임 시작</button>
+    </section>
+
+    <section id="game-screen" class="hidden">
+      <div class="game-top">
+        <div class="left-group">
+          <div id="timer" class="timer">02:00</div>
+          <button id="undo-btn" type="button">실행 취소</button>
+          <button id="hint-btn" type="button">힌트 3</button>
+        </div>
+        <button id="home-btn" class="home-btn" type="button" aria-label="홈으로">⌂</button>
+      </div>
+      <div class="board-wrap">
+        <div id="board" class="board" aria-label="시카쿠 보드"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="clear-overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="overlay-box">
+      <p>축하합니다 모든 퍼즐을 풀었습니다!</p>
+      <button id="overlay-confirm-btn" type="button">확인</button>
+    </div>
+  </div>
+
+  <div id="orientation-block" class="orientation-block">세로 모드에서만 플레이할 수 있습니다.</div>
+
+  <script>
+    const STORAGE_KEY = "luise-tt-setting-v1";
+    const CONFIG = {
+      easy: { cols: 6, rows: 8, label: "쉬움" },
+      normal: { cols: 9, rows: 12, label: "보통" },
+      hard: { cols: 11, rows: 16, label: "어려움" }
+    };
+
+    const appEl = document.querySelector(".app");
+    const startScreenEl = document.getElementById("start-screen");
+    const gameScreenEl = document.getElementById("game-screen");
+    const boardEl = document.getElementById("board");
+    const difficultyEl = document.getElementById("difficulty");
+    const timeLimitEl = document.getElementById("time-limit");
+    const timeValueEl = document.getElementById("time-value");
+    const startBtn = document.getElementById("start-btn");
+    const undoBtn = document.getElementById("undo-btn");
+    const hintBtn = document.getElementById("hint-btn");
+    const homeBtn = document.getElementById("home-btn");
+    const timerEl = document.getElementById("timer");
+    const clearOverlayEl = document.getElementById("clear-overlay");
+    const overlayConfirmBtn = document.getElementById("overlay-confirm-btn");
+    const orientationBlockEl = document.getElementById("orientation-block");
+
+    const state = {
+      rows: 8,
+      cols: 6,
+      clueMap: new Map(),
+      solutionRects: [],
+      placements: [],
+      placementGrid: [],
+      cellEls: [],
+      history: [],
+      dragStart: null,
+      dragEnd: null,
+      hintLeft: 3,
+      timeLimit: 120,
+      timeLeft: 120,
+      timerId: null,
+      isFinished: false
+    };
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function makeGrid(rows, cols, value) {
+      return Array.from({ length: rows }, () => Array.from({ length: cols }, () => value));
+    }
+
+    function cellKey(r, c) {
+      return `${r},${c}`;
+    }
+
+    function rectArea(rect) {
+      return (rect.r2 - rect.r1 + 1) * (rect.c2 - rect.c1 + 1);
+    }
+
+    function rectCells(rect) {
+      const cells = [];
+      for (let r = rect.r1; r <= rect.r2; r++) {
+        for (let c = rect.c1; c <= rect.c2; c++) {
+          cells.push([r, c]);
+        }
+      }
+      return cells;
+    }
+
+    function normalizedRect(a, b) {
+      return {
+        r1: Math.min(a.r, b.r),
+        c1: Math.min(a.c, b.c),
+        r2: Math.max(a.r, b.r),
+        c2: Math.max(a.c, b.c)
+      };
+    }
+
+    function intersectsClue(rect) {
+      let count = 0;
+      let clueValue = 0;
+      for (const [r, c] of rectCells(rect)) {
+        const clue = state.clueMap.get(cellKey(r, c));
+        if (clue !== undefined) {
+          count++;
+          clueValue = clue;
+        }
+      }
+      return { count, clueValue };
+    }
+
+    function generatePartition(rows, cols) {
+      const used = makeGrid(rows, cols, false);
+      const solutionRects = [];
+
+      function findEmpty() {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (!used[r][c]) return [r, c];
+          }
+        }
+        return null;
+      }
+
+      function canPlace(r1, c1, h, w) {
+        const r2 = r1 + h - 1;
+        const c2 = c1 + w - 1;
+        if (r2 >= rows || c2 >= cols) return false;
+        for (let r = r1; r <= r2; r++) {
+          for (let c = c1; c <= c2; c++) {
+            if (used[r][c]) return false;
+          }
+        }
+        return true;
+      }
+
+      function fill(rect, flag) {
+        for (let r = rect.r1; r <= rect.r2; r++) {
+          for (let c = rect.c1; c <= rect.c2; c++) {
+            used[r][c] = flag;
+          }
+        }
+      }
+
+      function backtrack() {
+        const start = findEmpty();
+        if (!start) return true;
+        const [r, c] = start;
+        const candidates = [];
+        for (let h = 1; h <= 5; h++) {
+          for (let w = 1; w <= 5; w++) {
+            const area = h * w;
+            if (area > 10) continue;
+            if (!canPlace(r, c, h, w)) continue;
+            candidates.push({ r1: r, c1: c, r2: r + h - 1, c2: c + w - 1 });
+          }
+        }
+        shuffle(candidates);
+        for (const rect of candidates) {
+          fill(rect, true);
+          solutionRects.push(rect);
+          if (backtrack()) return true;
+          solutionRects.pop();
+          fill(rect, false);
+        }
+        return false;
+      }
+
+      if (!backtrack()) throw new Error("퍼즐 생성 실패");
+      return solutionRects;
+    }
+
+    function buildPuzzle(rows, cols) {
+      const solutionRects = generatePartition(rows, cols);
+      const clueMap = new Map();
+      for (const rect of solutionRects) {
+        const cells = rectCells(rect);
+        const [r, c] = cells[randomInt(0, cells.length - 1)];
+        clueMap.set(cellKey(r, c), rectArea(rect));
+      }
+      return { solutionRects, clueMap };
+    }
+
+    function saveSettings() {
+      const payload = {
+        difficulty: difficultyEl.value,
+        timeLimit: Number(timeLimitEl.value)
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (_) {}
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed.difficulty && CONFIG[parsed.difficulty]) {
+          difficultyEl.value = parsed.difficulty;
+        }
+        const t = Number(parsed.timeLimit);
+        if (Number.isFinite(t) && t >= 20 && t <= 300) {
+          timeLimitEl.value = String(t);
+          timeValueEl.textContent = `${t}초`;
+        }
+      } catch (_) {}
+    }
+
+    function formatTime(seconds) {
+      const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const ss = String(seconds % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
+
+    function updateTimerView() {
+      timerEl.textContent = formatTime(Math.max(0, state.timeLeft));
+    }
+
+    function stopTimer() {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+    }
+
+    function colorFromId(id) {
+      const hue = (id * 47) % 360;
+      return `hsl(${hue} 78% 88%)`;
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      const appRect = appEl.getBoundingClientRect();
+      const topRect = document.querySelector(".game-top").getBoundingClientRect();
+      const usableW = Math.max(300, appRect.width - 18);
+      const usableH = Math.max(300, window.innerHeight - topRect.height - 36);
+      const cellFromW = Math.floor((usableW - 8) / state.cols);
+      const cellFromH = Math.floor((usableH - 8) / state.rows);
+      const cellSize = Math.max(18, Math.min(54, Math.min(cellFromW, cellFromH)));
+      const actionBtnWidth = Math.max(74, Math.min(130, Math.floor(cellSize * 2.2)));
+
+      document.documentElement.style.setProperty("--action-btn-width", `${actionBtnWidth}px`);
+      boardEl.style.setProperty("--cell-size", `${cellSize}px`);
+      boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
+      state.cellEls = makeGrid(state.rows, state.cols, null);
+
+      for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.r = String(r);
+          cell.dataset.c = String(c);
+          const clue = state.clueMap.get(cellKey(r, c));
+          if (clue !== undefined) cell.textContent = String(clue);
+          boardEl.appendChild(cell);
+          state.cellEls[r][c] = cell;
+        }
+      }
+      repaintPlacements();
+      clearPreview();
+    }
+
+    function repaintPlacements() {
+      for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+          const pid = state.placementGrid[r][c];
+          state.cellEls[r][c].style.background = pid === -1 ? "#fff" : colorFromId(pid + 1);
+        }
+      }
+    }
+
+    function clearPreview() {
+      for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+          state.cellEls[r][c].classList.remove("preview");
+        }
+      }
+    }
+
+    function showPreview(rect) {
+      clearPreview();
+      for (const [r, c] of rectCells(rect)) {
+        state.cellEls[r][c].classList.add("preview");
+      }
+    }
+
+    function removePlacementById(pid) {
+      for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+          if (state.placementGrid[r][c] === pid) state.placementGrid[r][c] = -1;
+        }
+      }
+      state.placements = state.placements.filter((p) => p.id !== pid);
+    }
+
+    function applyPlacement(rect, fromReveal = false) {
+      if (state.isFinished && !fromReveal) return false;
+      const area = rectArea(rect);
+      const clue = intersectsClue(rect);
+      if (clue.count !== 1 || clue.clueValue !== area) return false;
+
+      const touched = new Set();
+      for (const [r, c] of rectCells(rect)) {
+        if (state.placementGrid[r][c] !== -1) touched.add(state.placementGrid[r][c]);
+      }
+      for (const pid of touched) removePlacementById(pid);
+
+      const id = Date.now() + Math.floor(Math.random() * 1000000);
+      state.placements.push({ id, ...rect });
+      for (const [r, c] of rectCells(rect)) state.placementGrid[r][c] = id;
+      if (!fromReveal) state.history.push({ type: "place", id });
+      repaintPlacements();
+      if (!fromReveal) checkAutoClear();
+      return true;
+    }
+
+    function checkAutoClear() {
+      for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+          if (state.placementGrid[r][c] === -1) return;
+        }
+      }
+      state.isFinished = true;
+      stopTimer();
+      clearOverlayEl.classList.add("show");
+      clearOverlayEl.setAttribute("aria-hidden", "false");
+    }
+
+    function revealSolution() {
+      for (const rect of state.solutionRects) {
+        applyPlacement(rect, true);
+      }
+      state.isFinished = true;
+      stopTimer();
+    }
+
+    function startTimer() {
+      stopTimer();
+      state.timeLeft = state.timeLimit;
+      updateTimerView();
+      state.timerId = setInterval(() => {
+        if (state.isFinished) {
+          stopTimer();
+          return;
+        }
+        state.timeLeft--;
+        updateTimerView();
+        if (state.timeLeft <= 0) {
+          state.timeLeft = 0;
+          updateTimerView();
+          stopTimer();
+          revealSolution();
+        }
+      }, 1000);
+    }
+
+    function useHint() {
+      if (state.isFinished) return;
+      if (state.hintLeft <= 0) return;
+      const candidates = [];
+      for (const rect of state.solutionRects) {
+        let solved = true;
+        for (const [r, c] of rectCells(rect)) {
+          if (state.placementGrid[r][c] === -1) {
+            solved = false;
+            break;
+          }
+        }
+        if (!solved) candidates.push(rect);
+      }
+      if (candidates.length === 0) return;
+      const target = candidates[randomInt(0, candidates.length - 1)];
+      if (applyPlacement(target, false)) {
+        state.hintLeft--;
+        hintBtn.textContent = `힌트 ${state.hintLeft}`;
+        if (state.hintLeft <= 0) hintBtn.disabled = true;
+      }
+    }
+
+    function undo() {
+      if (state.isFinished) return;
+      const last = state.history.pop();
+      if (!last) return;
+      if (last.type === "place") removePlacementById(last.id);
+      repaintPlacements();
+    }
+
+    function resetToStart() {
+      stopTimer();
+      clearOverlayEl.classList.remove("show");
+      clearOverlayEl.setAttribute("aria-hidden", "true");
+      gameScreenEl.classList.add("hidden");
+      startScreenEl.classList.remove("hidden");
+    }
+
+    function startGame() {
+      const conf = CONFIG[difficultyEl.value] || CONFIG.easy;
+      state.cols = conf.cols;
+      state.rows = conf.rows;
+      state.timeLimit = Number(timeLimitEl.value);
+      state.placementGrid = makeGrid(state.rows, state.cols, -1);
+      state.placements = [];
+      state.history = [];
+      state.dragStart = null;
+      state.dragEnd = null;
+      state.hintLeft = 3;
+      state.isFinished = false;
+      hintBtn.disabled = false;
+      hintBtn.textContent = "힌트 3";
+
+      const puzzle = buildPuzzle(state.rows, state.cols);
+      state.clueMap = puzzle.clueMap;
+      state.solutionRects = puzzle.solutionRects;
+
+      saveSettings();
+      startScreenEl.classList.add("hidden");
+      gameScreenEl.classList.remove("hidden");
+      renderBoard();
+      startTimer();
+    }
+
+    function pickCellFromTarget(target) {
+      if (!(target instanceof HTMLElement)) return null;
+      if (!target.classList.contains("cell")) return null;
+      const r = Number(target.dataset.r);
+      const c = Number(target.dataset.c);
+      if (Number.isNaN(r) || Number.isNaN(c)) return null;
+      return { r, c };
+    }
+
+    function pickCellFromPoint(clientX, clientY) {
+      const target = document.elementFromPoint(clientX, clientY);
+      return pickCellFromTarget(target);
+    }
+
+    function onPointerDown(event) {
+      if (state.isFinished) return;
+      event.preventDefault();
+      const pos = pickCellFromPoint(event.clientX, event.clientY) || pickCellFromTarget(event.target);
+      if (!pos) return;
+      state.dragStart = pos;
+      state.dragEnd = pos;
+      showPreview(normalizedRect(pos, pos));
+      boardEl.setPointerCapture(event.pointerId);
+    }
+
+    function onPointerMove(event) {
+      if (state.isFinished || !state.dragStart) return;
+      event.preventDefault();
+      const pos = pickCellFromPoint(event.clientX, event.clientY);
+      if (!pos) return;
+      state.dragEnd = pos;
+      showPreview(normalizedRect(state.dragStart, state.dragEnd));
+    }
+
+    function onPointerUp(event) {
+      if (state.isFinished || !state.dragStart) return;
+      event.preventDefault();
+      const pos = pickCellFromPoint(event.clientX, event.clientY) || state.dragEnd || state.dragStart;
+      const rect = normalizedRect(state.dragStart, pos);
+      clearPreview();
+      applyPlacement(rect, false);
+      state.dragStart = null;
+      state.dragEnd = null;
+      try { boardEl.releasePointerCapture(event.pointerId); } catch (_) {}
+    }
+
+    function updateOrientationBlock() {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      orientationBlockEl.classList.toggle("show", isLandscape);
+    }
+
+    boardEl.addEventListener("pointerdown", onPointerDown);
+    boardEl.addEventListener("pointermove", onPointerMove);
+    boardEl.addEventListener("pointerup", onPointerUp);
+    boardEl.addEventListener("pointercancel", onPointerUp);
+
+    window.addEventListener("resize", () => {
+      updateOrientationBlock();
+      if (!gameScreenEl.classList.contains("hidden")) renderBoard();
+    });
+
+    timeLimitEl.addEventListener("input", () => {
+      const v = Number(timeLimitEl.value);
+      timeValueEl.textContent = `${v}초`;
+      saveSettings();
+    });
+    difficultyEl.addEventListener("change", saveSettings);
+    startBtn.addEventListener("click", startGame);
+    undoBtn.addEventListener("click", undo);
+    hintBtn.addEventListener("click", useHint);
+    homeBtn.addEventListener("click", resetToStart);
+    overlayConfirmBtn.addEventListener("click", resetToStart);
+
+    loadSettings();
+    updateOrientationBlock();
+    timerEl.textContent = formatTime(Number(timeLimitEl.value));
+  </script>
+</body>
+</html>
