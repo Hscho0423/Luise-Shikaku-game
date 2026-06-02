@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <title>루이 땅따먹기 게임</title>
   <style>
     :root {
@@ -71,6 +71,7 @@
       padding: 10px 12px;
       border: 1px solid #c9d4e8;
       background: #fff;
+      touch-action: manipulation;
     }
 
     button {
@@ -269,6 +270,14 @@
     </div>
   </div>
 
+  <div id="timeout-overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="overlay-box">
+      <p>제한시간이 초과되었습니다</p>
+      <button id="timeout-home-btn" type="button" style="margin-bottom:8px;">처음으로</button>
+      <button id="timeout-reveal-btn" type="button">정답보기</button>
+    </div>
+  </div>
+
   <div id="orientation-block" class="orientation-block">세로 모드에서만 플레이할 수 있습니다.</div>
 
   <script>
@@ -293,6 +302,9 @@
     const timerEl = document.getElementById("timer");
     const clearOverlayEl = document.getElementById("clear-overlay");
     const overlayConfirmBtn = document.getElementById("overlay-confirm-btn");
+    const timeoutOverlayEl = document.getElementById("timeout-overlay");
+    const timeoutHomeBtn = document.getElementById("timeout-home-btn");
+    const timeoutRevealBtn = document.getElementById("timeout-reveal-btn");
     const orientationBlockEl = document.getElementById("orientation-block");
 
     const state = {
@@ -310,7 +322,8 @@
       timeLimit: 120,
       timeLeft: 120,
       timerId: null,
-      isFinished: false
+      isFinished: false,
+      isRevealing: false
     };
 
     function randomInt(min, max) {
@@ -587,12 +600,38 @@
       clearOverlayEl.setAttribute("aria-hidden", "false");
     }
 
-    function revealSolution() {
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function revealSolutionAnimated() {
+      if (state.isRevealing) return;
+      state.isRevealing = true;
+      timeoutRevealBtn.disabled = true;
+      undoBtn.disabled = true;
+      hintBtn.disabled = true;
+      homeBtn.disabled = true;
+
       for (const rect of state.solutionRects) {
         applyPlacement(rect, true);
+        await sleep(70);
       }
+
       state.isFinished = true;
       stopTimer();
+      state.isRevealing = false;
+      timeoutRevealBtn.disabled = false;
+      homeBtn.disabled = false;
+    }
+
+    function showTimeoutOverlay() {
+      timeoutOverlayEl.classList.add("show");
+      timeoutOverlayEl.setAttribute("aria-hidden", "false");
+    }
+
+    function hideTimeoutOverlay() {
+      timeoutOverlayEl.classList.remove("show");
+      timeoutOverlayEl.setAttribute("aria-hidden", "true");
     }
 
     function startTimer() {
@@ -610,13 +649,14 @@
           state.timeLeft = 0;
           updateTimerView();
           stopTimer();
-          revealSolution();
+          state.isFinished = true;
+          showTimeoutOverlay();
         }
       }, 1000);
     }
 
     function useHint() {
-      if (state.isFinished) return;
+      if (state.isFinished || state.isRevealing) return;
       if (state.hintLeft <= 0) return;
       const candidates = [];
       for (const rect of state.solutionRects) {
@@ -639,7 +679,7 @@
     }
 
     function undo() {
-      if (state.isFinished) return;
+      if (state.isFinished || state.isRevealing) return;
       const last = state.history.pop();
       if (!last) return;
       if (last.type === "place") removePlacementById(last.id);
@@ -650,6 +690,7 @@
       stopTimer();
       clearOverlayEl.classList.remove("show");
       clearOverlayEl.setAttribute("aria-hidden", "true");
+      hideTimeoutOverlay();
       gameScreenEl.classList.add("hidden");
       startScreenEl.classList.remove("hidden");
     }
@@ -666,6 +707,10 @@
       state.dragEnd = null;
       state.hintLeft = 3;
       state.isFinished = false;
+      state.isRevealing = false;
+      undoBtn.disabled = false;
+      homeBtn.disabled = false;
+      timeoutRevealBtn.disabled = false;
       hintBtn.disabled = false;
       hintBtn.textContent = "힌트 3";
 
@@ -706,7 +751,7 @@
     }
 
     function onPointerMove(event) {
-      if (state.isFinished || !state.dragStart) return;
+      if (state.isFinished || state.isRevealing || !state.dragStart) return;
       event.preventDefault();
       const pos = pickCellFromPoint(event.clientX, event.clientY);
       if (!pos) return;
@@ -715,7 +760,7 @@
     }
 
     function onPointerUp(event) {
-      if (state.isFinished || !state.dragStart) return;
+      if (state.isFinished || state.isRevealing || !state.dragStart) return;
       event.preventDefault();
       const pos = pickCellFromPoint(event.clientX, event.clientY) || state.dragEnd || state.dragStart;
       const rect = normalizedRect(state.dragStart, pos);
@@ -752,6 +797,27 @@
     hintBtn.addEventListener("click", useHint);
     homeBtn.addEventListener("click", resetToStart);
     overlayConfirmBtn.addEventListener("click", resetToStart);
+    timeoutHomeBtn.addEventListener("click", resetToStart);
+    timeoutRevealBtn.addEventListener("click", () => {
+      hideTimeoutOverlay();
+      revealSolutionAnimated();
+    });
+
+    // iOS 더블탭 확대 및 제스처 확대 방지
+    let lastTouchEnd = 0;
+    document.addEventListener("touchend", (event) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
+    document.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+    }, { passive: false });
+    document.addEventListener("gesturestart", (event) => {
+      event.preventDefault();
+    }, { passive: false });
 
     loadSettings();
     updateOrientationBlock();
